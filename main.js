@@ -544,17 +544,43 @@ function doPost(e) {
 // 次回実行トリガーの設定（既存機能）
 //────────────────────────────────────────────
 function scheduleNextExecution() {
+  // 既存のmainトリガを削除する
   var allTriggers = ScriptApp.getProjectTriggers();
   allTriggers.forEach(function(trigger) {
     if (trigger.getHandlerFunction() === "main") {
       ScriptApp.deleteTrigger(trigger);
     }
   });
+  
+  var now = new Date();
+  // 現在時刻を分単位に変換（例：7:30 → 450分）
+  var currentMinutes = now.getHours() * 60 + now.getMinutes();
+  // 次回ターゲット時刻を設定するため、現在時刻をコピー
+  var targetTime = new Date(now);
+  
+  // 条件分岐：
+  // [朝～夕方] 7:00～18:59の場合は次回実行を当日の19:00に設定
+  // ※ここでは、朝7:00に実行された場合も同日の19:00に設定する
+  if (currentMinutes >= 7 * 60 && currentMinutes < 19 * 60) {
+    targetTime.setHours(19, 0, 0, 0);
+  } else {
+    // [夜間] それ以外（つまり、18:59以降または7:00より前の場合）は次回実行を7:00に設定
+    targetTime.setHours(7, 0, 0, 0);
+    // もしtargetTimeがすでに「過ぎている」場合は翌日にする
+    if (targetTime <= now) {
+      targetTime.setDate(targetTime.getDate() + 1);
+    }
+  }
+  
+  // 現在時刻とターゲット時刻の差分（ミリ秒）を算出
+  var msToWait = targetTime.getTime() - now.getTime();
+  
   ScriptApp.newTrigger("main")
-    .timeBased()
-    .after(6 * 60 * 60 * 1000)  // 6時間後（ミリ秒）
-    .create();
-  Logger.log("次回実行トリガーを6時間後に設定しました。");
+      .timeBased()
+      .after(msToWait)
+      .create();
+  
+  Logger.log("次回実行トリガーを " + targetTime.toString() + " に設定しました。");
 }
 
 //────────────────────────────────────────────
