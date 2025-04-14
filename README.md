@@ -9,6 +9,8 @@
 5. script propertiesを設定
     USERNAME:MoodleのID
     PASSWORD:Moodleのパスワード
+    LINE_CHANNEL_ID:LINE_CHANNEL_ID
+    LINE_CHANNEL_ACCESS_TOKEN:LINE CHANNELのアクセストークン
 6. 実行する
 
 初回実行は全データが更新対象として認識されるので、全ページ更新、としてメールが飛びます。

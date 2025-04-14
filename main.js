@@ -5,6 +5,11 @@ var PASSWORD = "";
 var MAIL_RECEIVERS = "";
 var LOGIN_URL  = "https://moodle.fz.ocha.ac.jp/R7/login/index.php";
 
+// LINE用グローバル変数（スクリプトプロパティからloadParametersでロード）
+var LINE_CHANNEL_ID = "";
+var LINE_CHANNEL_SECRET = "";  // ※実際にはChannel Access Tokenとして利用
+var LINE_CHANNEL_ACCESS_TOKEN = "";
+
 // 対象ページ情報：page_name と page_url
 var pages = [
   { page_name: "学校からのお知らせ",            page_url: "https://moodle.fz.ocha.ac.jp/R7/course/view.php?id=26172" },
@@ -58,7 +63,7 @@ var USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/53
 var cookieStore = {};
 
 //────────────────────────────────────────────
-// 設定読み込み：loadConfig()
+// 設定読み込み：loadConfig()（既存機能）
 //────────────────────────────────────────────
 function loadConfig() {
   // スクリプトプロパティから USERNAME, PASSWORD を取得
@@ -105,7 +110,22 @@ function loadConfig() {
 }
 
 //────────────────────────────────────────────
-// HTML 取得・加工系
+// パラメータ読み込み：loadParameters()
+//────────────────────────────────────────────
+function loadParameters() {
+  var scriptProps = PropertiesService.getScriptProperties();
+  LINE_CHANNEL_ID = scriptProps.getProperty("LINE_CHANNEL_ID");
+  LINE_CHANNEL_SECRET = scriptProps.getProperty("LINE_CHANNEL_SECRET");
+  LINE_CHANNEL_ACCESS_TOKEN = scriptProps.getProperty("LINE_CHANNEL_ACCESS_TOKEN");
+  if (!LINE_CHANNEL_ID || !LINE_CHANNEL_SECRET || !LINE_CHANNEL_ACCESS_TOKEN) {
+    Logger.log("エラー: LINE_CHANNEL_ID または LINE_CHANNEL_SECRET または LINE_CHANNEL_ACCESS_TOKEN がスクリプトプロパティに設定されていません。");
+    throw new Error("LINE_CHANNEL_ID または LINE_CHANNEL_SECRET または LINE_CHANNEL_ACCESS_TOKEN が設定されていません。");
+  }
+  Logger.log("LINE_CHANNEL_ID, LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN の設定完了");
+}
+
+//────────────────────────────────────────────
+// HTML 取得・加工系（既存機能）
 //────────────────────────────────────────────
 function loginAndGetCookies() {
   var optionsGet = { "headers": { "User-Agent": USER_AGENT } };
@@ -373,10 +393,160 @@ function sendUpdateEmail(updates) {
     body += item.page_name + ": " + item.page_url + "\n";
   });
   MailApp.sendEmail(MAIL_RECEIVERS, subject, body);
+  Logger.log("メール送信完了");
 }
 
 //────────────────────────────────────────────
-// 次回実行トリガーの設定
+// LINEユーザー管理シート操作系
+//────────────────────────────────────────────
+function getLineSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("LINE");
+  if (!sheet) {
+    sheet = ss.insertSheet("LINE");
+    sheet.clear();
+    // ヘッダー設定：必要なパラメータを列ごとに登録
+    // ※ここでは、userId, eventType, replyToken, sourceType, timestamp, destination, rawData を保存
+    sheet.appendRow(["userId", "eventType", "replyToken", "sourceType", "timestamp", "destination", "rawData"]);
+  }
+  return sheet;
+}
+
+function addLineUser(eventObj) {
+  // followイベント時に呼び出し。eventObjはJSONオブジェクトの1イベント分（followイベント）
+  var sheet = getLineSheet();
+  var userId = eventObj.source.userId;
+  
+  // 既に登録済みかチェック（userIdが一致する行があれば更新しない）
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {  // ヘッダー行を除く
+    if (data[i][0] === userId) {
+      Logger.log("既に登録済みのユーザー: " + userId);
+      return;
+    }
+  }
+  
+  // 新規登録
+  var eventType = eventObj.type;
+  var replyToken = eventObj.replyToken || "";
+  var sourceType = eventObj.source.type || "";
+  var timestamp = eventObj.timestamp;
+  var destination = eventObj.destination || "";
+  var rawData = JSON.stringify(eventObj);
+  sheet.appendRow([userId, eventType, replyToken, sourceType, timestamp, destination, rawData]);
+  Logger.log("LINEユーザーを追加: " + userId);
+}
+
+function removeLineUser(userId) {
+  var sheet = getLineSheet();
+  var data = sheet.getDataRange().getValues();
+  for (var i = data.length - 1; i >= 1; i--) {  // ヘッダーを除く
+    if (data[i][0] === userId) {
+      sheet.deleteRow(i + 1);
+      Logger.log("LINEユーザーを削除: " + userId);
+    }
+  }
+}
+
+//────────────────────────────────────────────
+// LINE通知送信系
+//────────────────────────────────────────────
+/**
+ * sendLinePushNotifications(message)
+ * 登録されているLINEユーザー全員に対して、指定されたメッセージをプッシュ通知する。
+ * 送信失敗時は3回までリトライし、3回失敗した場合はログにエラーメッセージを出力するのみとする。
+ */
+function sendLinePushNotifications(message) {
+  var sheet = getLineSheet();
+  var data = sheet.getDataRange().getValues();
+  // ヘッダー行は除く
+  for (var i = 1; i < data.length; i++) {
+    var userId = data[i][0];
+    var success = sendLinePushMessage(userId, message);
+    if (!success) {
+      Logger.log("LINE通知：3回連続で送信失敗、ユーザー " + userId + " への送信は失敗しました。");
+      // ユーザー行の削除は行わない
+    }
+  }
+}
+
+/**
+ * sendLinePushMessage(userId, message)
+ * 1ユーザーに対してLINEプッシュ通知を送信（最大3回リトライ）
+ * 成功時はtrue、失敗時はfalseを返す。
+ */
+function sendLinePushMessage(userId, message) {
+  var url = "https://api.line.me/v2/bot/message/push";
+  var payload = {
+    "to": userId,
+    "messages": [
+      { "type": "text", "text": message }
+    ]
+  };
+  var options = {
+    "method": "post",
+    "contentType": "application/json",
+    "payload": JSON.stringify(payload),
+    "headers": {
+      "Authorization": "Bearer " + LINE_CHANNEL_ACCESS_TOKEN
+    },
+    "muteHttpExceptions": true  // HTTPエラーでもエラーをスローしない
+  };
+  
+  for (var i = 0; i < 3; i++) {
+    try {
+      var response = UrlFetchApp.fetch(url, options);
+      var responseCode = response.getResponseCode();
+      var responseText = response.getContentText();
+      Logger.log("LINE APIレスポンス (userId: " + userId + "): HTTP " + responseCode + " - " + responseText);
+      if (responseCode >= 200 && responseCode < 300) {
+        Logger.log("LINEプッシュ通知送信成功: " + userId);
+        return true;
+      } else {
+        Logger.log("LINEプッシュ通知送信エラー（HTTP " + responseCode + "）: " + userId);
+      }
+    } catch(e) {
+      Logger.log("LINEプッシュ通知送信例外: " + e + " ユーザー: " + userId);
+    }
+    Utilities.sleep(1000); // 1秒待機して再試行
+  }
+  return false;
+}
+
+//────────────────────────────────────────────
+// doPost: LINE webhook 用エンドポイント
+//────────────────────────────────────────────
+/**
+ * LINEからのWebhookを処理するエンドポイント
+ * followイベント → ユーザー追加
+ * unfollow（ブロック含む）イベント → ユーザー削除
+ * その他のイベントは通知せず、必要に応じて処理を拡張してください。
+ */
+function doPost(e) {
+  try {
+    var json = JSON.parse(e.postData.contents);
+    Logger.log("LINE webhook受信: " + JSON.stringify(json));
+    if (json.events && json.events.length > 0) {
+      json.events.forEach(function(eventObj) {
+        if (eventObj.type === "follow") {
+          addLineUser(eventObj);
+        } else if (eventObj.type === "unfollow") {
+          // unfollowイベントの場合、ユーザーIDは eventObj.source.userId
+          removeLineUser(eventObj.source.userId);
+        }
+        // その他のイベントは特に処理しない（メッセージは無視）
+      });
+    }
+    // 応答用として空文字列を返す
+    return ContentService.createTextOutput("");
+  } catch (err) {
+    Logger.log("doPostエラー: " + err);
+    return ContentService.createTextOutput("");
+  }
+}
+
+//────────────────────────────────────────────
+// 次回実行トリガーの設定（既存機能）
 //────────────────────────────────────────────
 function scheduleNextExecution() {
   var allTriggers = ScriptApp.getProjectTriggers();
@@ -393,11 +563,13 @@ function scheduleNextExecution() {
 }
 
 //────────────────────────────────────────────
-// メイン実行関数
+// メイン実行関数（更新検知 → マスタ更新 → メール通知 → LINE通知）
 //────────────────────────────────────────────
 function main() {
   // loadConfig()で設定を読み込む
   loadConfig();
+  // loadParameters()でLINEのパラメータをロード
+  loadParameters();
   
   // 「マスタ」シートに実行日時をA1セルに記入
   var masterSheet = getMasterSheet();
@@ -442,13 +614,21 @@ function main() {
   // マスタシートの更新＋比較（実行日時は各行のD列に記録）
   var updatedPages = updateMasterSheet(newData);
   
-  // 更新があればメール送信
-  sendUpdateEmail(updatedPages);
+  // 更新があればメール送信およびLINEプッシュ通知送信
+  if (updatedPages.length > 0) {
+    var body = "お茶の水Moodleの以下のページが更新されました\n\n";
+    updatedPages.forEach(function(item) {
+      body += item.page_name + ": " + item.page_url + "\n";
+    });
+    sendUpdateEmail(updatedPages);
+    sendLinePushNotifications(body);
+  }
   
   // 次回実行トリガーを6時間後に設定
   scheduleNextExecution();
 }
 
 //────────────────────────────────────────────
-// 最終実行：main() の呼出し
+// 最終実行：main() の呼出し（必要に応じて、手動実行またはトリガー設定）
 //────────────────────────────────────────────
+// main();
