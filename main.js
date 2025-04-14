@@ -7,7 +7,6 @@ var LOGIN_URL  = "https://moodle.fz.ocha.ac.jp/R7/login/index.php";
 
 // LINE用グローバル変数（スクリプトプロパティからloadParametersでロード）
 var LINE_CHANNEL_ID = "";
-var LINE_CHANNEL_SECRET = "";  // ※実際にはChannel Access Tokenとして利用
 var LINE_CHANNEL_ACCESS_TOKEN = "";
 
 // 対象ページ情報：page_name と page_url
@@ -63,11 +62,12 @@ var USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/53
 var cookieStore = {};
 
 //────────────────────────────────────────────
-// 設定読み込み：loadConfig()（既存機能）
+// 設定読み込み：loadConfig()（全設定を統合）
 //────────────────────────────────────────────
 function loadConfig() {
-  // スクリプトプロパティから USERNAME, PASSWORD を取得
   var scriptProps = PropertiesService.getScriptProperties();
+  
+  // USERNAME, PASSWORD の取得
   USERNAME = scriptProps.getProperty("USERNAME");
   PASSWORD = scriptProps.getProperty("PASSWORD");
   if (!USERNAME || !PASSWORD) {
@@ -107,22 +107,17 @@ function loadConfig() {
   });
   MAIL_RECEIVERS = emails.join(",");
   Logger.log("MAIL_RECEIVERS 設定完了: " + MAIL_RECEIVERS);
+
+  // LINE 用パラメータの取得
+  LINE_CHANNEL_ID = scriptProps.getProperty("LINE_CHANNEL_ID");
+  LINE_CHANNEL_ACCESS_TOKEN = scriptProps.getProperty("LINE_CHANNEL_ACCESS_TOKEN");
+  if (!LINE_CHANNEL_ID || !LINE_CHANNEL_ACCESS_TOKEN) {
+    Logger.log("エラー: LINE_CHANNEL_ID または LINE_CHANNEL_ACCESS_TOKEN がスクリプトプロパティに設定されていません。");
+    throw new Error("LINE_CHANNEL_ID または LINE_CHANNEL_ACCESS_TOKEN が設定されていません。");
+  }
+  Logger.log("LINE_CHANNEL_ID と LINE_CHANNEL_ACCESS_TOKEN の設定完了");
 }
 
-//────────────────────────────────────────────
-// パラメータ読み込み：loadParameters()
-//────────────────────────────────────────────
-function loadParameters() {
-  var scriptProps = PropertiesService.getScriptProperties();
-  LINE_CHANNEL_ID = scriptProps.getProperty("LINE_CHANNEL_ID");
-  LINE_CHANNEL_SECRET = scriptProps.getProperty("LINE_CHANNEL_SECRET");
-  LINE_CHANNEL_ACCESS_TOKEN = scriptProps.getProperty("LINE_CHANNEL_ACCESS_TOKEN");
-  if (!LINE_CHANNEL_ID || !LINE_CHANNEL_SECRET || !LINE_CHANNEL_ACCESS_TOKEN) {
-    Logger.log("エラー: LINE_CHANNEL_ID または LINE_CHANNEL_SECRET または LINE_CHANNEL_ACCESS_TOKEN がスクリプトプロパティに設定されていません。");
-    throw new Error("LINE_CHANNEL_ID または LINE_CHANNEL_SECRET または LINE_CHANNEL_ACCESS_TOKEN が設定されていません。");
-  }
-  Logger.log("LINE_CHANNEL_ID, LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN の設定完了");
-}
 
 //────────────────────────────────────────────
 // HTML 取得・加工系（既存機能）
@@ -566,10 +561,8 @@ function scheduleNextExecution() {
 // メイン実行関数（更新検知 → マスタ更新 → メール通知 → LINE通知）
 //────────────────────────────────────────────
 function main() {
-  // loadConfig()で設定を読み込む
+  // loadConfig()で全設定を読み込む
   loadConfig();
-  // loadParameters()でLINEのパラメータをロード
-  loadParameters();
   
   // 「マスタ」シートに実行日時をA1セルに記入
   var masterSheet = getMasterSheet();
