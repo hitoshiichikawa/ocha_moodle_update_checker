@@ -231,7 +231,7 @@ function fetchPageContent(url, cookies) {
 }
 
 function extractPageContent(html) {
-  var startIndex = html.indexOf('<div id="page-content"');
+  var startIndex = html.indexOf('<div id="region-main-box"');
   if (startIndex === -1) return html;
   var startTagEnd = html.indexOf('>', startIndex);
   if (startTagEnd === -1) return html;
