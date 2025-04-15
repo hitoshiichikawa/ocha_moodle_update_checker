@@ -544,7 +544,7 @@ function doPost(e) {
 // 次回実行トリガーの設定（既存機能）
 //────────────────────────────────────────────
 function scheduleNextExecution() {
-  // 既存のmainトリガを削除する
+  // 既存の main 関数のトリガーをすべて削除
   var allTriggers = ScriptApp.getProjectTriggers();
   allTriggers.forEach(function(trigger) {
     if (trigger.getHandlerFunction() === "main") {
@@ -553,32 +553,39 @@ function scheduleNextExecution() {
   });
   
   var now = new Date();
-  // 現在時刻を分単位に変換（例：7:30 → 450分）
-  var currentMinutes = now.getHours() * 60 + now.getMinutes();
-  // 次回ターゲット時刻を設定するため、現在時刻をコピー
-  var targetTime = new Date(now);
+  var nowMinutes = now.getHours() * 60 + now.getMinutes();
   
-  // 条件分岐：
-  // [朝～夕方] 7:00～18:59の場合は次回実行を当日の19:00に設定
-  // ※ここでは、朝7:00に実行された場合も同日の19:00に設定する
-  if (currentMinutes >= 7 * 60 && currentMinutes < 19 * 60) {
-    targetTime.setHours(19, 0, 0, 0);
-  } else {
-    // [夜間] それ以外（つまり、18:59以降または7:00より前の場合）は次回実行を7:00に設定
-    targetTime.setHours(7, 0, 0, 0);
-    // もしtargetTimeがすでに「過ぎている」場合は翌日にする
-    if (targetTime <= now) {
-      targetTime.setDate(targetTime.getDate() + 1);
+  // ターゲット時刻（分換算：7:00, 12:00, 15:00, 18:00, 21:00）
+  var scheduledMinutes = [7 * 60, 12 * 60, 15 * 60, 18 * 60, 21 * 60];
+  var targetTime = new Date(now);
+  var found = false;
+  
+  // 現在時刻より後の最初のターゲット時刻を今日中から探す
+  for (var i = 0; i < scheduledMinutes.length; i++) {
+    if (nowMinutes < scheduledMinutes[i]) {
+      var hour = Math.floor(scheduledMinutes[i] / 60);
+      var minute = scheduledMinutes[i] % 60;
+      targetTime.setHours(hour, minute, 0, 0);
+      found = true;
+      break;
     }
+  }
+  
+  // 今日中に該当する時刻がなければ、翌日の7:00に設定
+  if (!found) {
+    targetTime = new Date(now);
+    targetTime.setDate(targetTime.getDate() + 1);
+    targetTime.setHours(7, 0, 0, 0);
   }
   
   // 現在時刻とターゲット時刻の差分（ミリ秒）を算出
   var msToWait = targetTime.getTime() - now.getTime();
   
+  // 次回の実行トリガーを設定
   ScriptApp.newTrigger("main")
-      .timeBased()
-      .after(msToWait)
-      .create();
+    .timeBased()
+    .after(msToWait)
+    .create();
   
   Logger.log("次回実行トリガーを " + targetTime.toString() + " に設定しました。");
 }
@@ -643,7 +650,7 @@ function main() {
     sendLinePushNotifications(body);
   }
   
-  // 次回実行トリガーを6時間後に設定
+  // 次回実行トリガーを設定
   scheduleNextExecution();
 }
 
