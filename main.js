@@ -597,8 +597,11 @@ function scheduleNextExecution() {
   var now = new Date();
   var nowMinutes = now.getHours() * 60 + now.getMinutes();
   
-  // ターゲット時刻（分換算：7:00, 12:00, 15:00, 18:00, 21:00）
-  var scheduledMinutes = [7 * 60, 12 * 60, 15 * 60, 18 * 60, 21 * 60];
+  // ターゲット時刻（分換算：7時から21時まで毎時）
+  var scheduledMinutes = [];
+  for (var hour = 7; hour <= 21; hour++) {
+    scheduledMinutes.push(hour * 60);
+  }
   var targetTime = new Date(now);
   var found = false;
   
