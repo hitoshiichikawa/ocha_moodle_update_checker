@@ -265,7 +265,49 @@ function extractPageContent(html) {
       pos = nextClose + 6;
     }
   }
-  return html.substring(contentStart, pos - 6);
+  
+  var content = html.substring(contentStart, pos - 6);
+  
+  content = removeNavigationElements(content);
+  
+  return content;
+}
+
+function removeNavigationElements(content) {
+  content = removeElementByClass(content, "section-navigation navigationtitle");
+  
+  content = removeElementByClass(content, "section-navigation mdl-bottom");
+  
+  return content;
+}
+
+function removeElementByClass(html, className) {
+  var startIndex = html.indexOf('<div class="' + className);
+  if (startIndex === -1) return html;
+  
+  var startTagEnd = html.indexOf('>', startIndex);
+  if (startTagEnd === -1) return html;
+  
+  var contentStart = startTagEnd + 1;
+  var openCount = 1;
+  var pos = contentStart;
+  
+  while (openCount > 0) {
+    var nextOpen = html.indexOf('<div', pos);
+    var nextClose = html.indexOf('</div>', pos);
+    
+    if (nextClose === -1) break;
+    
+    if (nextOpen !== -1 && nextOpen < nextClose) {
+      openCount++;
+      pos = nextOpen + 4;
+    } else {
+      openCount--;
+      pos = nextClose + 6;
+    }
+  }
+  
+  return html.substring(0, startIndex) + html.substring(pos);
 }
 
 function filterDynamicAttributes(content) {
