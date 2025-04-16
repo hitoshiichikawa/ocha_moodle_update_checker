@@ -316,6 +316,11 @@ function filterDynamicAttributes(content) {
   content = content.replace(/\s*aria-controls="(?:random[^"]*|down-[^"]*|menu-[^"]*|sessKey[^"]*|list-[^"]*|container-[^"]*|toggle-[^"]*|searchinput-[^"]*|month-[^"]*|navigation-[^"]*|format-[^"]*|url_select[^"]*|single_button[^"]*)"/gi, '');
   content = content.replace(/\s*aria-labelledby="(?:random[^"]*|down-[^"]*|menu-[^"]*|sessKey[^"]*|list-[^"]*|container-[^"]*|toggle-[^"]*|searchinput-[^"]*|month-[^"]*|navigation-[^"]*|format-[^"]*|url_select[^"]*|single_button[^"]*)"/gi, '');
   content = content.replace(/(?:random|down-|menu-|sessKey|list-|container-|toggle-|searchinput-|month-|navigation-|format-|url_select|single_button)[^\n]*/gi, '');
+  
+  content = content.replace(/\s*aria-expanded="(?:true|false)"/gi, '');
+  content = content.replace(/\s*class="([^"]*)(?:expanded|collapsed|folded|unfolded)([^"]*)"/gi, ' class="$1$2"');
+  content = content.replace(/\s*data-(?:expanded|collapsed|folded|unfolded|toggle-state)="[^"]*"/gi, '');
+  
   return content;
 }
 
