@@ -61,6 +61,8 @@ var USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/53
 //────────────────────────────────────────────
 var cookieStore = {};
 
+var LOG_RETENTION_DAYS = 30;
+
 //────────────────────────────────────────────
 // 設定読み込み：loadConfig()（全設定を統合）
 //────────────────────────────────────────────
@@ -423,11 +425,14 @@ function appendRowToLogSheet(page_name, url, title, hash, emptyStr, timestamp, f
 }
 
 /**
- * cleanupOldLogEntries()
- * ログシートから30日以上経過したエントリを削除する
- * F列の書き込み日時を基準にして、30日以上前のデータを削除する
+ * cleanupOldLogEntries(retentionDays)
+ * ログシートから指定日数以上経過したエントリを削除する
+ * F列の書き込み日時を基準にして、指定日数以上前のデータを削除する
+ * @param {number} retentionDays - 保持する日数（デフォルトはグローバル変数 LOG_RETENTION_DAYS）
  */
-function cleanupOldLogEntries() {
+function cleanupOldLogEntries(retentionDays) {
+  retentionDays = (typeof retentionDays !== 'undefined') ? retentionDays : LOG_RETENTION_DAYS;
+  
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName("ログ");
   if (!sheet) {
@@ -441,21 +446,21 @@ function cleanupOldLogEntries() {
     return;
   }
   
-  var thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  Logger.log("30日前の日時: " + thirtyDaysAgo);
+  var cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+  Logger.log(retentionDays + "日前の日時: " + cutoffDate);
   
   var deleteCount = 0;
   for (var i = data.length - 1; i > 0; i--) {  // ヘッダー行（i=0）は処理しない
     var rowDate = data[i][5];  // F列（インデックス5）が書き込み日時
-    if (rowDate instanceof Date && rowDate < thirtyDaysAgo) {
+    if (rowDate instanceof Date && rowDate < cutoffDate) {
       sheet.deleteRow(i + 1);  // スプレッドシートの行番号は1から始まるため+1
       deleteCount++;
     }
   }
   
   if (deleteCount > 0) {
-    Logger.log("30日以上前の古いログエントリ " + deleteCount + " 件を削除しました。");
+    Logger.log(retentionDays + "日以上前の古いログエントリ " + deleteCount + " 件を削除しました。");
   } else {
     Logger.log("削除対象の古いログエントリはありませんでした。");
   }
@@ -739,10 +744,40 @@ function main() {
     sendLinePushNotifications(body);
   }
   
-  cleanupOldLogEntries();
-  
   // 次回実行トリガーを設定
   scheduleNextExecution();
+  
+  setupLogCleanupTrigger();
+}
+
+/**
+ * setupLogCleanupTrigger()
+ * ログクリーンアップ用のトリガーをチェックし、存在しなければ設定する
+ * 毎日0:30に実行するようにトリガーを設定
+ */
+function setupLogCleanupTrigger() {
+  var triggers = ScriptApp.getProjectTriggers();
+  var logCleanupTriggerExists = false;
+  
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === "cleanupOldLogEntries") {
+      logCleanupTriggerExists = true;
+      break;
+    }
+  }
+  
+  if (!logCleanupTriggerExists) {
+    ScriptApp.newTrigger("cleanupOldLogEntries")
+      .timeBased()
+      .atHour(0)
+      .nearMinute(30)
+      .everyDays(1)
+      .create();
+    
+    Logger.log("ログクリーンアップ用のトリガーを設定しました（毎日0:30に実行）");
+  } else {
+    Logger.log("ログクリーンアップ用のトリガーは既に設定されています");
+  }
 }
 
 //────────────────────────────────────────────
