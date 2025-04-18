@@ -423,6 +423,45 @@ function appendRowToLogSheet(page_name, url, title, hash, emptyStr, timestamp, f
 }
 
 /**
+ * cleanupOldLogEntries()
+ * ログシートから30日以上経過したエントリを削除する
+ * F列の書き込み日時を基準にして、30日以上前のデータを削除する
+ */
+function cleanupOldLogEntries() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("ログ");
+  if (!sheet) {
+    Logger.log("ログシートが見つかりません。クリーンアップをスキップします。");
+    return;
+  }
+  
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {  // ヘッダー行のみの場合
+    Logger.log("ログデータが存在しません。クリーンアップをスキップします。");
+    return;
+  }
+  
+  var thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  Logger.log("30日前の日時: " + thirtyDaysAgo);
+  
+  var deleteCount = 0;
+  for (var i = data.length - 1; i > 0; i--) {  // ヘッダー行（i=0）は処理しない
+    var rowDate = data[i][5];  // F列（インデックス5）が書き込み日時
+    if (rowDate instanceof Date && rowDate < thirtyDaysAgo) {
+      sheet.deleteRow(i + 1);  // スプレッドシートの行番号は1から始まるため+1
+      deleteCount++;
+    }
+  }
+  
+  if (deleteCount > 0) {
+    Logger.log("30日以上前の古いログエントリ " + deleteCount + " 件を削除しました。");
+  } else {
+    Logger.log("削除対象の古いログエントリはありませんでした。");
+  }
+}
+
+/**
  * sendUpdateEmail(updates)
  * 更新があったページ情報からメール本文を作成し、
  * グローバル変数 MAIL_RECEIVERS に送信する。
@@ -699,6 +738,8 @@ function main() {
     sendUpdateEmail(updatedPages);
     sendLinePushNotifications(body);
   }
+  
+  cleanupOldLogEntries();
   
   // 次回実行トリガーを設定
   scheduleNextExecution();
