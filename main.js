@@ -61,7 +61,8 @@ var USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/53
 //────────────────────────────────────────────
 var cookieStore = {};
 
-var LOG_RETENTION_DAYS = 30;
+// グローバル変数：ログ保持日数（デフォルト値）
+var LOG_RETENTION_DAYS_DEFAULT = 30;       // ← デフォルト値をこちらに
 
 //────────────────────────────────────────────
 // 設定読み込み：loadConfig()（全設定を統合）
@@ -425,45 +426,82 @@ function appendRowToLogSheet(page_name, url, title, hash, emptyStr, timestamp, f
 }
 
 /**
+ * getLogRetentionDays()
+ * Script Properties に保存されている保持日数を取得。
+ * なければデフォルト (LOG_RETENTION_DAYS_DEFAULT) を返す。
+ */
+function getLogRetentionDays() {
+  var v = parseInt(PropertiesService.getScriptProperties()
+                   .getProperty("LOG_RETENTION_DAYS"), 10);
+  return (isNaN(v) || v <= 0) ? LOG_RETENTION_DAYS_DEFAULT : v;
+}
+
+/**
+ * setLogRetentionDays(retentionDays)
+ * 保持日数を Script Properties に保存する。
+ */
+function setLogRetentionDays(retentionDays) {
+  if (typeof retentionDays !== "number" || retentionDays <= 0) {
+    retentionDays = LOG_RETENTION_DAYS_DEFAULT;
+  }
+  PropertiesService.getScriptProperties()
+    .setProperty("LOG_RETENTION_DAYS", String(retentionDays));
+  Logger.log("LOG_RETENTION_DAYS を " + retentionDays + " 日に設定しました");
+}
+
+
+/**
  * cleanupOldLogEntries(retentionDays)
  * ログシートから指定日数以上経過したエントリを削除する
  * F列の書き込み日時を基準にして、指定日数以上前のデータを削除する
  * @param {number} retentionDays - 保持する日数（デフォルトはグローバル変数 LOG_RETENTION_DAYS）
  */
 function cleanupOldLogEntries(retentionDays) {
-  retentionDays = (typeof retentionDays !== 'undefined') ? retentionDays : LOG_RETENTION_DAYS;
-  
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName("ログ");
-  if (!sheet) {
-    Logger.log("ログシートが見つかりません。クリーンアップをスキップします。");
-    return;
-  }
-  
-  var data = sheet.getDataRange().getValues();
-  if (data.length <= 1) {  // ヘッダー行のみの場合
-    Logger.log("ログデータが存在しません。クリーンアップをスキップします。");
-    return;
-  }
-  
-  var cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
-  Logger.log(retentionDays + "日前の日時: " + cutoffDate);
-  
-  var deleteCount = 0;
-  for (var i = data.length - 1; i > 0; i--) {  // ヘッダー行（i=0）は処理しない
-    var rowDate = data[i][5];  // F列（インデックス5）が書き込み日時
-    if (rowDate instanceof Date && rowDate < cutoffDate) {
-      sheet.deleteRow(i + 1);  // スプレッドシートの行番号は1から始まるため+1
-      deleteCount++;
+  // ── 1. 保持日数の確定 ───────────────────────
+  var days = Number(retentionDays);                    // 引数
+  if (!(days > 0)) {
+    days = Number(PropertiesService.getScriptProperties()
+                  .getProperty('LOG_RETENTION_DAYS')); // Script Properties
+    if (!(days > 0)) {
+      if (typeof LOG_RETENTION_DAYS !== 'undefined' && LOG_RETENTION_DAYS > 0) {
+        days = Number(LOG_RETENTION_DAYS);             // グローバル変数
+      } else {
+        days = 30;                                     // デフォルト
+      }
     }
   }
-  
-  if (deleteCount > 0) {
-    Logger.log(retentionDays + "日以上前の古いログエントリ " + deleteCount + " 件を削除しました。");
-  } else {
-    Logger.log("削除対象の古いログエントリはありませんでした。");
+
+  // ── 2. シート取得 ──────────────────────────
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('ログ');
+  if (!sheet) {
+    Logger.log('ログシートが見つかりません。クリーンアップをスキップします。');
+    return;
   }
+
+  // ── 3. 削除対象判定 ────────────────────────
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {            // ヘッダーのみ
+    Logger.log('ログデータが存在しません。クリーンアップをスキップします。');
+    return;
+  }
+
+  var cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);             // しきい値
+
+  var deleted = 0;
+  for (var i = data.length - 1; i > 0; i--) {          // 下から走査（i=0 はヘッダー）
+    var ts = data[i][5];                               // F列 = 書込み日時
+    if (ts instanceof Date && ts < cutoff) {
+      sheet.deleteRow(i + 1);                          // シート行番号は 1 起点
+      deleted++;
+    }
+  }
+
+  // ── 4. ログ出力 ───────────────────────────
+  Logger.log(deleted
+    ? days + ' 日以上前のログを ' + deleted + ' 行削除しました。'
+    : '削除対象の古いログはありませんでした。');
 }
 
 /**
@@ -747,7 +785,7 @@ function main() {
   // 次回実行トリガーを設定
   scheduleNextExecution();
   
-  setupLogCleanupTrigger();
+  setupLogCleanupTrigger(LOG_RETENTION_DAYS_DEFAULT);
 }
 
 /**
@@ -755,29 +793,32 @@ function main() {
  * ログクリーンアップ用のトリガーをチェックし、存在しなければ設定する
  * 毎日0:30に実行するようにトリガーを設定
  */
-function setupLogCleanupTrigger() {
-  var triggers = ScriptApp.getProjectTriggers();
-  var logCleanupTriggerExists = false;
-  
-  for (var i = 0; i < triggers.length; i++) {
-    if (triggers[i].getHandlerFunction() === "cleanupOldLogEntries") {
-      logCleanupTriggerExists = true;
-      break;
+function setupLogCleanupTrigger(retentionDays) {
+  // 1. 指定がなければデフォルト
+  if (typeof retentionDays !== "number" || retentionDays <= 0) {
+    retentionDays = LOG_RETENTION_DAYS_DEFAULT;
+  }
+
+  // 2. Script Properties を更新
+  setLogRetentionDays(retentionDays);
+
+  // 3. 既存トリガーを削除して作り直し（重複防止）
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === "cleanupOldLogEntries") {
+      ScriptApp.deleteTrigger(t);
     }
-  }
-  
-  if (!logCleanupTriggerExists) {
+  });
+
+    // 4. 新規トリガー作成：毎日 0:30
     ScriptApp.newTrigger("cleanupOldLogEntries")
-      .timeBased()
-      .atHour(0)
-      .nearMinute(30)
-      .everyDays(1)
-      .create();
-    
-    Logger.log("ログクリーンアップ用のトリガーを設定しました（毎日0:30に実行）");
-  } else {
-    Logger.log("ログクリーンアップ用のトリガーは既に設定されています");
-  }
+    .timeBased()
+    .atHour(0)
+    .nearMinute(30)
+    .everyDays(1)
+    .create();
+
+  Logger.log("ログクリーンアップトリガーを再設定しました（保持日数 "
+             + retentionDays + " 日）");
 }
 
 //────────────────────────────────────────────
