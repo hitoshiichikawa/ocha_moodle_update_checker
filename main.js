@@ -50,7 +50,15 @@ var pages = [
   { page_name: "1年学年からの連絡",             page_url: "https://moodle.fz.ocha.ac.jp/R7/course/view.php?id=26376" },
   { page_name: "1年学年からの連絡-一般",         page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=3880" },
   { page_name: "1年むすぶ",                   page_url: "https://moodle.fz.ocha.ac.jp/R7/course/view.php?id=26377" },
-  { page_name: "1年むすぶ-一般",               page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=3885" }
+  { page_name: "1年むすぶ-一般",               page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=3885" },
+  { page_name: "令和8年度関係",               page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=6548" },
+  { page_name: "公開研究会に関連するお知らせ",  page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=5237" },
+  { page_name: "音楽会写真・DVD関係",        page_url:"https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=5304" },
+  { page_name: "リーバーについて",               page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=5526" },
+  { page_name: "お茶大　理系女性育成開発研究所より",  page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=6540" },
+  { page_name: "まめクワより",               page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=5765" },
+  { page_name: "校外委員会",               page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=5740" },
+  { page_name: "東京都より",               page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=6203" }
 ];
 
 // 定数：共通の User-Agent
