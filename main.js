@@ -159,6 +159,7 @@ function loginAndGetCookies() {
     "method": "post",
     "payload": payload,
     "followRedirects": false,
+    "muteHttpExceptions": true,
     "contentType": "application/x-www-form-urlencoded",
     "headers": {
       "User-Agent": USER_AGENT,
