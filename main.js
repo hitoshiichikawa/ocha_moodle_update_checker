@@ -3,7 +3,7 @@
 var USERNAME = "";
 var PASSWORD = "";
 var MAIL_RECEIVERS = "";
-var LOGIN_URL  = "https://moodle.fz.ocha.ac.jp/R7/login/index.php";
+var LOGIN_URL  = "https://moodle.fz.ocha.ac.jp/2026/login/index.php";
 
 // LINE用グローバル変数（スクリプトプロパティからloadParametersでロード）
 var LINE_CHANNEL_ID = "";
@@ -204,7 +204,7 @@ function loginAndGetCookies() {
     "followRedirects": true
   };
   Logger.log("【ホームページアクセス】リクエストに使用する Cookie: " + cookieString);
-  var homeResponse = UrlFetchApp.fetch("https://moodle.fz.ocha.ac.jp/R7/", homeOptions);
+  var homeResponse = UrlFetchApp.fetch("https://moodle.fz.ocha.ac.jp/2026/", homeOptions);
   var homeHeaders = homeResponse.getAllHeaders();
   Logger.log("ホームページアクセス時のレスポンスヘッダー: " + JSON.stringify(homeHeaders));
   mergeCookiesFromHeader(cookieStore, homeHeaders["Set-Cookie"]);
