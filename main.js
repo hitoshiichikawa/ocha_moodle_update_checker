@@ -9,57 +9,8 @@ var LOGIN_URL  = "https://moodle.fz.ocha.ac.jp/R7/login/index.php";
 var LINE_CHANNEL_ID = "";
 var LINE_CHANNEL_ACCESS_TOKEN = "";
 
-// 対象ページ情報：page_name と page_url
-var pages = [
-  { page_name: "学校からのお知らせ",            page_url: "https://moodle.fz.ocha.ac.jp/R7/course/view.php?id=26172" },
-  { page_name: "学校だより",                    page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=281" },
-  { page_name: "学校行事等にかかわるお知らせ",      page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=4557" },
-  { page_name: "学用品等に関するお知らせ",         page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=5097" },
-  { page_name: "児童指導部からのお知らせ",         page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=3126" },
-  { page_name: "各種届出用紙等",                 page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=4555" },
-  { page_name: "ICT利用案内について",             page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=5619" },
-  { page_name: "小学校給食室",                  page_url: "https://moodle.fz.ocha.ac.jp/R7/course/view.php?id=26145" },
-  { page_name: "School Lunch Time",            page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=4160" },
-  { page_name: "献立表",                        page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=2257" },
-  { page_name: "給食停止希望届",                page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=5531" },
-  { page_name: "給食レシピ",                    page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=823" },
-  { page_name: "小学校保健室",                  page_url: "https://moodle.fz.ocha.ac.jp/R7/course/view.php?id=26144" },
-  { page_name: "保健室-一般",                    page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=22" },
-  { page_name: "保健室-更新情報",                page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=291" },
-  { page_name: "欠席の様子",                    page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=3122" },
-  { page_name: "ほけんだより",                  page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=293" },
-  { page_name: "出席・欠席について",             page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=292" },
-  { page_name: "保健のしおり",                  page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=4546" },
-  { page_name: "インフルエンザ関連",             page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=2001" },
-  { page_name: "コロナワクチン関連",             page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=296" },
-  { page_name: "参考資料",                      page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=297" },
-  { page_name: "お茶っ子相談室",                page_url: "https://moodle.fz.ocha.ac.jp/R7/course/view.php?id=26146" },
-  { page_name: "悩みを相談したい時は",            page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=972" },
-  { page_name: "お茶っ子相談室から",             page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=883" },
-  { page_name: "かがみ会・各種団体",              page_url: "https://moodle.fz.ocha.ac.jp/R7/course/view.php?id=26183" },
-  { page_name: "掲載更新連絡",                  page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=38" },
-  { page_name: "2025年度かがみ会総会",            page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=4600" },
-  { page_name: "2025年度かがみ会通信",            page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=4621" },
-  { page_name: "企画委員会",                    page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=4737" },
-  { page_name: "厚生委員会",                    page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=4573" },
-  { page_name: "図書ボランティア(2025年度)",      page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=732" },
-  { page_name: "環境整備ボランティア",            page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=2633" },
-  { page_name: "教育後援会",                    page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=4602" },
-  { page_name: "桜蔭会（お茶大同窓会）より",        page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=307" },
-  { page_name: "全附Ｐ連",                     page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=3827" },
-  { page_name: "1年学年からの連絡",             page_url: "https://moodle.fz.ocha.ac.jp/R7/course/view.php?id=26376" },
-  { page_name: "1年学年からの連絡-一般",         page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=3880" },
-  { page_name: "1年むすぶ",                   page_url: "https://moodle.fz.ocha.ac.jp/R7/course/view.php?id=26377" },
-  { page_name: "1年むすぶ-一般",               page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=3885" },
-  { page_name: "令和8年度関係",               page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=6548" },
-  { page_name: "公開研究会に関連するお知らせ",  page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=5237" },
-  { page_name: "音楽会写真・DVD関係",        page_url:"https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=5304" },
-  { page_name: "リーバーについて",               page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=5526" },
-  { page_name: "お茶大　理系女性育成開発研究所より",  page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=6540" },
-  { page_name: "まめクワより",               page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=5765" },
-  { page_name: "校外委員会",               page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=5740" },
-  { page_name: "東京都より",               page_url: "https://moodle.fz.ocha.ac.jp/R7/course/section.php?id=6203" }
-];
+// 対象ページ情報：page_name と page_url（loadPagesFromSheet()で上書きされる）
+var pages = [];
 
 // 定数：共通の User-Agent
 var USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36";
@@ -126,6 +77,62 @@ function loadConfig() {
   Logger.log("LINE_CHANNEL_ID と LINE_CHANNEL_ACCESS_TOKEN の設定完了");
 }
 
+//────────────────────────────────────────────
+// URLCHECKシートからページ情報を読み込む
+//────────────────────────────────────────────
+/**
+ * loadPagesFromSheet()
+ * 「URLCHECK」シートからページ情報（page_name, page_url）を読み込み、
+ * グローバル変数 pages に格納する。
+ * シート構造：A列=page_name, B列=page_url（1行目はヘッダー）
+ */
+function loadPagesFromSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("URLCHECK");
+  if (!sheet) {
+    Logger.log("エラー: URLCHECKシートが見つかりません。");
+    throw new Error("URLCHECKシートがありません。");
+  }
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    Logger.log("エラー: URLCHECKシートにデータがありません。");
+    throw new Error("URLCHECKシートにデータがありません。");
+  }
+
+  // ヘッダー行（1行目）を除いた2行目以降を取得
+  var dataRange = sheet.getRange(2, 1, lastRow - 1, 2);
+  var data = dataRange.getValues();
+
+  var urlRegex = /^https?:\/\/[^\s]+$/;
+  pages = [];
+  data.forEach(function(row, index) {
+    var pageName = row[0];
+    var pageUrl = row[1];
+    // 空行をスキップ
+    if (!pageName && !pageUrl) {
+      return;
+    }
+    var name = pageName ? pageName.toString().trim() : "";
+    var url = pageUrl ? pageUrl.toString().trim() : "";
+    if (!name || !url) {
+      Logger.log("エラー: URLCHECKシート " + (index + 2) + " 行目に page_name または page_url が欠けています。");
+      throw new Error("URLCHECKシート " + (index + 2) + " 行目に page_name または page_url が欠けています。");
+    }
+    if (!urlRegex.test(url)) {
+      Logger.log("エラー: URLCHECKシート " + (index + 2) + " 行目の page_url が不正です: " + url);
+      throw new Error("URLCHECKシート " + (index + 2) + " 行目の page_url が不正です: " + url);
+    }
+    pages.push({ page_name: name, page_url: url });
+  });
+
+  if (pages.length === 0) {
+    Logger.log("エラー: URLCHECKシートに有効なページ情報がありません。");
+    throw new Error("URLCHECKシートに有効なページ情報がありません。");
+  }
+
+  Logger.log("URLCHECKシートから " + pages.length + " 件のページ情報を読み込みました。");
+}
 
 //────────────────────────────────────────────
 // HTML 取得・加工系（既存機能）
@@ -380,17 +387,19 @@ function updateMasterSheet(newData) {
   var sheet = getMasterSheet();
   // A1セルは実行日時（上書きする）
   sheet.getRange("A1").setValue(new Date());
-  
+
   // データは2行目以降のうち、ヘッダーは2行目、実データは3行目から
   var lastRow = sheet.getLastRow();
   var numRows = lastRow - 2;
-  if (numRows <= 0) return [];
-  var dataRange = sheet.getRange(3, 1, numRows, 4);
-  var data = dataRange.getValues();
+  var data = numRows > 0
+    ? sheet.getRange(3, 1, numRows, 4).getValues()
+    : [];
   var updates = [];
+  var newRows = [];
   var checkTime = new Date();
-  
+
   newData.forEach(function(item) {
+    var found = false;
     for (var i = 0; i < data.length; i++) {
       if (data[i][0] === item.page_name) {
         var oldHash = data[i][1];
@@ -403,12 +412,24 @@ function updateMasterSheet(newData) {
           data[i][2] = "";
           data[i][3] = checkTime;
         }
+        found = true;
         break;
       }
     }
+    if (!found) {
+      // マスタに存在しない新規ページ：新規行として追加し、更新扱いで通知
+      newRows.push([item.page_name, item.hash, "更新", checkTime]);
+      updates.push(item);
+      Logger.log("マスタシートに新規ページを追加: " + item.page_name);
+    }
   });
-  
-  dataRange.setValues(data);
+
+  if (data.length > 0) {
+    sheet.getRange(3, 1, data.length, 4).setValues(data);
+  }
+  if (newRows.length > 0) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, 4).setValues(newRows);
+  }
   return updates;
 }
 
@@ -654,7 +675,10 @@ function scheduleNextExecution() {
 function main() {
   // loadConfig()で全設定を読み込む
   loadConfig();
-  
+
+  // URLCHECKシートから対象ページ情報を読み込む
+  loadPagesFromSheet();
+
   // 「マスタ」シートに実行日時をA1セルに記入
   var masterSheet = getMasterSheet();
   masterSheet.getRange("A1").setValue(new Date());
