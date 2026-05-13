@@ -618,62 +618,16 @@ function doPost(e) {
 }
 
 //────────────────────────────────────────────
-// 次回実行トリガーの設定（既存機能）
-//────────────────────────────────────────────
-function scheduleNextExecution() {
-  // 既存の main 関数のトリガーをすべて削除
-  var allTriggers = ScriptApp.getProjectTriggers();
-  allTriggers.forEach(function(trigger) {
-    if (trigger.getHandlerFunction() === "main") {
-      ScriptApp.deleteTrigger(trigger);
-    }
-  });
-  
-  var now = new Date();
-  var nowMinutes = now.getHours() * 60 + now.getMinutes();
-  
-  // ターゲット時刻（分換算：7時から21時まで毎時）
-  var scheduledMinutes = [];
-  for (var hour = 7; hour <= 21; hour++) {
-    scheduledMinutes.push(hour * 60);
-  }
-  var targetTime = new Date(now);
-  var found = false;
-  
-  // 現在時刻より後の最初のターゲット時刻を今日中から探す
-  for (var i = 0; i < scheduledMinutes.length; i++) {
-    if (nowMinutes < scheduledMinutes[i]) {
-      var hour = Math.floor(scheduledMinutes[i] / 60);
-      var minute = scheduledMinutes[i] % 60;
-      targetTime.setHours(hour, minute, 0, 0);
-      found = true;
-      break;
-    }
-  }
-  
-  // 今日中に該当する時刻がなければ、翌日の7:00に設定
-  if (!found) {
-    targetTime = new Date(now);
-    targetTime.setDate(targetTime.getDate() + 1);
-    targetTime.setHours(7, 0, 0, 0);
-  }
-  
-  // 現在時刻とターゲット時刻の差分（ミリ秒）を算出
-  var msToWait = targetTime.getTime() - now.getTime();
-  
-  // 次回の実行トリガーを設定
-  ScriptApp.newTrigger("main")
-    .timeBased()
-    .after(msToWait)
-    .create();
-  
-  Logger.log("次回実行トリガーを " + targetTime.toString() + " に設定しました。");
-}
-
-//────────────────────────────────────────────
 // メイン実行関数（更新検知 → マスタ更新 → メール通知 → LINE通知）
 //────────────────────────────────────────────
 function main() {
+  // 実行時間帯ガード（7時～21時のみ実行）
+  var currentHour = new Date().getHours();
+  if (currentHour < 7 || currentHour > 21) {
+    Logger.log("実行時間帯外のためスキップしました（現在 " + currentHour + " 時）");
+    return;
+  }
+
   // loadConfig()で全設定を読み込む
   loadConfig();
 
@@ -732,9 +686,6 @@ function main() {
     sendUpdateEmail(updatedPages);
     sendLinePushNotifications(body);
   }
-  
-  // 次回実行トリガーを設定
-  scheduleNextExecution();
 }
 
 //────────────────────────────────────────────
