@@ -453,6 +453,30 @@ function appendRowToLogSheet(page_name, url, title, hash, emptyStr, timestamp, f
 }
 
 /**
+ * trimLogSheet()
+ * 「ログ」シートのデータ行が 5000 行を超えた場合、古い行（上）から削除して
+ * 最新 5000 行 + ヘッダー行のみを残す。定期トリガーで実行する想定。
+ */
+function trimLogSheet() {
+  var MAX_ROWS = 5000;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("ログ");
+  if (!sheet) {
+    Logger.log("trimLogSheet: ログシートが見つかりません。");
+    return;
+  }
+  var lastRow = sheet.getLastRow();
+  var dataRows = lastRow - 1; // ヘッダーを除く
+  if (dataRows <= MAX_ROWS) {
+    Logger.log("trimLogSheet: 削除不要（データ行数 " + dataRows + "）");
+    return;
+  }
+  var rowsToDelete = dataRows - MAX_ROWS;
+  sheet.deleteRows(2, rowsToDelete);
+  Logger.log("trimLogSheet: 古いログ " + rowsToDelete + " 行を削除しました（残り " + MAX_ROWS + " 行）");
+}
+
+/**
  * sendUpdateEmail(updates)
  * 更新があったページ情報からメール本文を作成し、
  * グローバル変数 MAIL_RECEIVERS に送信する。
